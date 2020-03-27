@@ -45,4 +45,24 @@ User Namespace相对来说就好理解很多。众所周知，在Linux里面每�
 
 # Cgroup
 
-未完待续....这礼拜有空接着写
+Linux Cgroup，全程Control Group。它的出现为的是解决一个什么问题呢？之前的Namespace，针对的只是Namespace之间的隔离。而我们如果要求能够对资源进行限制呢？现有的Namespace是无法做到这点的。于是Linux中就引入了Cgroup这个概念。Cgroup针对的是进程，相当于是一个进程分组框架。在Cgroup中主要有两个概念：hierarchy和subsystem。
+
+## Hierarchy
+
+Hierachy表达的是一个层次结构，Hierachy是一个树状结构，而在一个Hierachy下，可以绑定多个子Hierachy。这样就实现的进程的层级控制，所以一棵树更多的是相当于将进程进行分组。
+
+## Subsystem
+
+首先声明一个约束，一个subsystem只能挂载到一个Cgroup Hierachy节点上。而这个subsystem可以根据约束的资源，分为9种类型：
++ cpu subsystem （CPU使用率）
++ cpuacct subsystem（进程的CPU使用报告）
++ cpuset subsystem（为进程分配单独的CPU节点或者内存节点）
++ memory subsystem（内存分配）
++ blkio subsystem（设备io资源分配）
++ devices subsystem（设备访问控制）
++ net_cls subsystem（标记Cgroup下的进程数据包，使用tc模块（traffic control）进行数据包控制）
++ freezer subsystem （挂起恢复进程）
++ ns subsystem （使得不同cgroup下面的进程使用不同的namespace）
+
+（net_cls和freezer还不是很懂）
+

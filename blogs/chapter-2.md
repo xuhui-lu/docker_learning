@@ -12,7 +12,7 @@ tags:								#标签
 ===
 终于开始写博客啦，希望能够通过这个过程让自己能够沉淀下来，更好地深入技术吧。因为最近入职于一家SAAS公司，平时工作里不可避免的要碰到k8s和docker，趁此机会也好好熟悉这两门技术。主要的学习手段是通过陈显鹭前辈的这本《自己动手写Docker》开始，一方面是实现一个东西可以让人对它了解更深刻，另一方面是熟悉go语言的使用，毕竟是工作语言...借此机会系统地学一下。
 
-这一章主要分为两个部分，一个是namespace，一个是Cgroup，作为docker虚拟化概念中的核心技术。
+这一章主要分为三个部分，一个是namespace，一个是Cgroup，还有就是AUFS。作为docker虚拟化概念中的核心技术。
 
 # Namespce
 Namespace是Linux的Kernel的一个功能，通过这个手段，Linux可以将其，我们在这里称之为各种资源隔离开来，其中包括进程，包括UserID，还有Network等。这也是docker镜像之间能够相互不干扰的原理所在。
@@ -66,3 +66,21 @@ Hierachy表达的是一个层次结构，Hierachy是一个树状结构，而在�
 
 （net_cls和freezer还不是很懂）
 
+# AUFS
+之前的两个概念一个帮助docker容器之间相互隔离，一个帮助docker分配和限制系统资源。AUFS（Advanced Multi-Layered Unification Filesyste）则是用来高效节省空间和文件复用的。书中的cases由于编码的原因比较难理解，我在此会用比较简单的方式表达。首先docker会管理本地仓库的一堆images。比如，我pull了一个ubuntu 14.0.0的image 1，这个image由四层image layer组成。然后基于这个image，我又创建了一个docker image 2
+
+```
+FFROM image 1
+
+RUN sh-cmd
+```
+
+## Image Layer
+在这个sh-cmd中，有可能一些文件被更改了，但是其实大部分都是可以复用的，而在/var/lib/docker/aufs/diff/下面存了所有的layer，在这里，我们假设image 1有3个layer： layer1， layer2， layer3。而/var/lib/docker/aufs/layers则是存储了layer的metadata。比如在layer3下包括了layer1和layer2.在我们创建了新的image 2后。我们新添加了一个layer，而相比较image1，这个image其实并没有发生很大变大，因此我们只需要将他们的diff存在layer4，而image 2则由layer1，layer2，layer3，layer4组成。当访问不到相关文件，就会去下层的layer寻找。在书中的例子中，layer4的大小仅为12B大大节省了空间。
+
+## Container Layer
+Container Layer则是用于管理container创建以后的管理.当一个container创建之后，会用到一个技术，被称为写时复制(copy on write)。也就是说，当且仅当这个container对文件进行写操作的时候，文件才会从下层Layer复制上来。而这个缺点则是，即使文件有很小的改动，也需要复制整个文件，好处就是，可以让文件尽可能的服用和节省磁盘空间。Container创建的时候会同事创建两个layer，一个是layer—id-init，另一个则是layer-id。前者是read-only的，存一些关于这个docker镜像的环境相关的数据，另一个则是read-write层，用于完成之前我提到的CoW技术。Container的metadata存在/var/lib/containers/container_id，包括容器的metadata和一些config。
+
+而关于删除一个文件file1，则是在read-write层添加一个.wh.file1，这样就可以屏蔽这个层以下所有的read-only层的file1文件。
+
+到此，这个章节也告一段落。
